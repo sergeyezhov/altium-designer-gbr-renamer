@@ -1,41 +1,39 @@
+@file:JvmName("Main") // you can specify 'Main' in build.gradle: jar { manifest { 'Main-Class': 'me.projects.utils.gbrrenamer.Main' } }
 package me.projects.utils.gbrrenamer
 
 import java.io.File
 import java.util.*
-import java.util.regex.Pattern
 
-val gPattern = Pattern.compile("[gG]([1-9][0-9]*)")
-val fileVersionPattern = Pattern.compile("^.+(_\\d+)")
+val gPattern = """[gG]([1-9][0-9]*)""".toRegex()
 
-// renamer -src=. -dst=./gbr/ -fname
-// GTL > G1 > GBL ===> L1 > L2 > L3
+// java -jar altium-designer-gbr-renamer-1.0.0.jar -src=. -dst=./gbr -fname=filename_123
 fun main(args: Array<String>) {
     val props = toProps(args)
     val srcFiles = File(props["src"] ?: ".").listFiles().toList()
-    val dst = props["dst"] ?: "./gbr/"
+    val dst = props["dst"] ?: ".${File.separator}gbr"
     val fName = props["fname"] ?: "filename_123"
 
-    // fileName = filename_123
-    // srcFileNames -> dstFilenames
-    // ./плата питания1.GTL -> ./gbr/filename_L1_123.gbr
-    // ./плата питания1.G1 -> ./gbr/filename_L2_123.gbr
-    // ./плата питания1.G2 -> ./gbr/filename_L3_123.gbr
-    // ./плата питания1.GBL -> ./gbr/filename_L4_123.gbr
+    // clean dst
+    File(dst).deleteRecursively()
 
+    // rename files and copy them to dst
     toSrcDstMap(fName, srcFiles, dst).entries
             .forEach { it.key.copyTo(it.value) }
 }
 
 fun toSrcDstMap(fName: String, srcFiles: List<File>, dst: String): Map<File, File> {
 
-    val fileVersion = fileVersionPattern.matcher(fName).group(1)
-    val fileName = fName.replace(fileVersion, "_")
+    val fvRegex = """_(\d+)$""".toRegex()
+    val fileVersion = fvRegex.find(fName)?.groupValues?.get(1) ?: "VER"
+    val fileName = fName.replace(fvRegex, "")
+    val destination = if (dst.indexOf(File.separatorChar) == dst.length - 1) dst else "$dst${File.separator}"
 
     val gblNumber = calcGblNumber(srcFiles)
+    val projectName = fetchProjectName(srcFiles)
 
-    return srcFiles.map {
+    return srcFiles.mapNotNull {
 
-        var suffix = ""
+        var suffix: String? = null
         var ext = "gbr"
 
         when (it.extension.toUpperCase()) {
@@ -57,12 +55,25 @@ fun toSrcDstMap(fName: String, srcFiles: List<File>, dst: String): Map<File, Fil
             }
         }
 
-        val matcher = gPattern.matcher(it.extension)
-        if (matcher.matches()) {
-            suffix = "L${matcher.group(1).toInt() + 1}"
+        // G
+        // {projectName}.G{n} -> {fileName}_L{n+1}_{fileVersion}.gbr
+        gPattern.find(it.extension)?.let {
+            suffix = "L${it.groupValues[1].toInt() + 1}"
         }
 
-        it to File("$fileName$suffix$fileVersion.$ext")
+        // GP
+        // {projectName}.GP{n} -> {fileName}_L{gblNum + n}_{fileVersion}.gbr
+        """[gG][pP]([1-9][0-9]*)""".toRegex().find(it.extension)?.let {
+            suffix = "L${gblNumber + it.groupValues[1].toInt()}"
+        }
+
+        // TXT
+        // {projectName}.txt -> {fileName}_{fileVersion}.drl
+        if (it.nameWithoutExtension == projectName && it.extension.equals("TXT", ignoreCase = true)) {
+            it to File("$destination${fileName}_$fileVersion.drl")
+        } else if (suffix != null) {
+            it to File("$destination${fileName}_${suffix}_$fileVersion.$ext")
+        } else null
     }.toMap()
 }
 
@@ -77,15 +88,19 @@ fun calcGblNumber(files: List<File>): Int {
     }
 
     exts.forEach {
-        val matcher = gPattern.matcher(it)
-        if (matcher.matches()) {
-            val layNum = matcher.group(1).toInt()
+        gPattern.find(it)?.let {
+            val layNum = it.groupValues[1].toInt()
             if (layNum > maxGNum) {
                 maxGNum = layNum
             }
         }
     }
     return maxGNum + 2
+}
+
+fun fetchProjectName(files: List<File>): String {
+    return files.firstOrNull { it.extension.equals("GTL", ignoreCase = true) }
+            ?.nameWithoutExtension ?: throw RuntimeException("GTL file not found")
 }
 
 fun toProps(args: Array<String>): Map<String, String> {
