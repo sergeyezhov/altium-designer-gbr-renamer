@@ -38,6 +38,37 @@ class RenamerTest {
                 "плата питания1.G2",
                 "программа.exe"
         ).map { File(it) }))
+
+        assertEquals(7, calcGblNumber(arrayOf(
+                "плата питания1.GTL",
+                "плата питания1.GBL",
+                "плата питания1.G1",
+                "плата питания1.G2",
+                "плата питания1.GP1",
+                "плата питания1.GP2",
+                "плата питания1.GP3"
+        ).map { File(it) }))
+    }
+
+    @Test
+    fun `calc max G number`() {
+        assertEquals(2, calcMaxGNumber(arrayOf(
+                "плата питания1.GTL",
+                "плата питания1.GBL",
+                "плата питания1.G1",
+                "плата питания1.G2",
+                "плата питания1.GP1",
+                "плата питания1.GP2",
+                "плата питания1.GP3"
+        ).map { File(it) }))
+
+        assertEquals(0, calcMaxGNumber(arrayOf(
+                "плата питания1.GTL",
+                "плата питания1.GBL",
+                "плата питания1.GP1",
+                "плата питания1.GP2",
+                "плата питания1.GP3"
+        ).map { File(it) }))
     }
 
     @Test
@@ -80,7 +111,23 @@ class RenamerTest {
         assertEquals("./folder/filename_L2_123.gbr", map[File("плата питания1.GBL")]?.path)
     }
 
-        @Test
+    @Test
+    fun `to src dst map - no G`() {
+
+        val map = toSrcDstMap("filename_123", listOf(
+                "плата питания1.GTL",
+                "плата питания1.GP1",
+                "плата питания1.GP2",
+                "плата питания1.GBL"
+        ).map { File(it) }, "./folder")
+
+        assertEquals("./folder/filename_L1_123.gbr", map[File("плата питания1.GTL")]?.path)
+        assertEquals("./folder/filename_L2_123.gbr", map[File("плата питания1.GP1")]?.path)
+        assertEquals("./folder/filename_L3_123.gbr", map[File("плата питания1.GP2")]?.path)
+        assertEquals("./folder/filename_L4_123.gbr", map[File("плата питания1.GBL")]?.path)
+    }
+
+    @Test
     fun `to src dst map - real example #1`() {
 
         val map = toSrcDstMap("filename_123", listOf(
@@ -142,12 +189,12 @@ class RenamerTest {
         assertEquals(12, map.size)
         assertEquals("./folder/filename_L2_123.gbr", map[File("плата питания1.G1")]?.path)
         assertEquals("./folder/filename_L3_123.gbr", map[File("плата питания1.G2")]?.path)
-        assertEquals("./folder/filename_L4_123.gbr", map[File("плата питания1.GBL")]?.path)
+        assertEquals("./folder/filename_L6_123.gbr", map[File("плата питания1.GBL")]?.path)
         assertEquals("./folder/filename_S2_123.gbr", map[File("плата питания1.GBO")]?.path)
         assertEquals("./folder/filename_M2_123.gbr", map[File("плата питания1.GBS")]?.path)
         assertEquals("./folder/filename_KR_123.gbr", map[File("плата питания1.GM17")]?.path)
-        assertEquals("./folder/filename_L5_123.gbr", map[File("плата питания1.GP1")]?.path)
-        assertEquals("./folder/filename_L6_123.gbr", map[File("плата питания1.GP2")]?.path)
+        assertEquals("./folder/filename_L4_123.gbr", map[File("плата питания1.GP1")]?.path)
+        assertEquals("./folder/filename_L5_123.gbr", map[File("плата питания1.GP2")]?.path)
         assertEquals("./folder/filename_L1_123.gbr", map[File("плата питания1.GTL")]?.path)
         assertEquals("./folder/filename_S1_123.gbr", map[File("плата питания1.GTO")]?.path)
         assertEquals("./folder/filename_M1_123.gbr", map[File("плата питания1.GTS")]?.path)
@@ -202,12 +249,12 @@ class RenamerTest {
         assertEquals("./folder/filename_L11_123.gbr", map[File("плата питания1.G10")]?.path)
         assertEquals("./folder/filename_L12_123.gbr", map[File("плата питания1.G11")]?.path)
         assertEquals("./folder/filename_L13_123.gbr", map[File("плата питания1.G12")]?.path)
-        assertEquals("./folder/filename_L14_123.gbr", map[File("плата питания1.GBL")]?.path)
+        assertEquals("./folder/filename_L16_123.gbr", map[File("плата питания1.GBL")]?.path)
         assertEquals("./folder/filename_S2_123.gbr", map[File("плата питания1.GBO")]?.path)
         assertEquals("./folder/filename_M2_123.gbr", map[File("плата питания1.GBS")]?.path)
         assertEquals("./folder/filename_KR_123.gbr", map[File("плата питания1.GM17")]?.path)
-        assertEquals("./folder/filename_L15_123.gbr", map[File("плата питания1.GP1")]?.path)
-        assertEquals("./folder/filename_L16_123.gbr", map[File("плата питания1.GP2")]?.path)
+        assertEquals("./folder/filename_L14_123.gbr", map[File("плата питания1.GP1")]?.path)
+        assertEquals("./folder/filename_L15_123.gbr", map[File("плата питания1.GP2")]?.path)
         assertEquals("./folder/filename_L1_123.gbr", map[File("плата питания1.GTL")]?.path)
         assertEquals("./folder/filename_S1_123.gbr", map[File("плата питания1.GTO")]?.path)
         assertEquals("./folder/filename_M1_123.gbr", map[File("плата питания1.GTS")]?.path)

@@ -1,10 +1,17 @@
-@file:JvmName("Main") // you can specify 'Main' in build.gradle: jar { manifest { 'Main-Class': 'me.projects.utils.gbrrenamer.Main' } }
+// with @file you can specify 'Main' in build.gradle:
+//   jar { manifest { 'Main-Class': 'me.projects.utils.gbrrenamer.Main' } }
+// or use RenamerKt otherwise:
+//   jar { manifest { 'Main-Class': 'me.projects.utils.gbrrenamer.RenamerKt' } }
+@file:JvmName("Main")
+
 package me.projects.utils.gbrrenamer
 
 import java.io.File
 import java.util.*
+import kotlin.text.RegexOption.IGNORE_CASE
 
-val gPattern = """[gG]([1-9][0-9]*)""".toRegex()
+val gPattern = """G([1-9][0-9]*)""".toRegex(setOf(IGNORE_CASE))
+val gpPattern = """GP([1-9][0-9]*)""".toRegex(setOf(IGNORE_CASE))
 
 // java -jar altium-designer-gbr-renamer-1.0.0.jar -src=. -dst=./gbr -fname=filename_123
 fun main(args: Array<String>) {
@@ -25,6 +32,7 @@ fun toSrcDstMap(fName: String, srcFiles: List<File>, dst: String): Map<File, Fil
     val fileName = fName.replace(fvRegex, "")
     val destination = if (dst.indexOf(File.separatorChar) == dst.length - 1) dst else "$dst${File.separator}"
 
+    val maxGNumber = calcMaxGNumber(srcFiles)
     val gblNumber = calcGblNumber(srcFiles)
     val projectName = fetchProjectName(srcFiles)
 
@@ -60,8 +68,8 @@ fun toSrcDstMap(fName: String, srcFiles: List<File>, dst: String): Map<File, Fil
 
         // GP
         // {projectName}.GP{n} -> {fileName}_L{gblNum + n}_{fileVersion}.gbr
-        """[gG][pP]([1-9][0-9]*)""".toRegex().find(it.extension)?.let {
-            suffix = "L${gblNumber + it.groupValues[1].toInt()}"
+        gpPattern.find(it.extension)?.let {
+            suffix = "L${maxGNumber + 1 + it.groupValues[1].toInt()}"
         }
 
         // TXT
@@ -77,6 +85,7 @@ fun toSrcDstMap(fName: String, srcFiles: List<File>, dst: String): Map<File, Fil
 fun calcGblNumber(files: List<File>): Int {
 
     var maxGNum = 0
+    var maxGPNum = 0
 
     val exts = files.map { it.extension }.distinct()
 
@@ -91,8 +100,28 @@ fun calcGblNumber(files: List<File>): Int {
                 maxGNum = layNum
             }
         }
+        gpPattern.find(it)?.let {
+            val layNum = it.groupValues[1].toInt()
+            if (layNum > maxGPNum) {
+                maxGPNum = layNum
+            }
+        }
     }
-    return maxGNum + 2
+    return maxGNum + maxGPNum + 2
+}
+
+fun calcMaxGNumber(files: List<File>): Int {
+    var maxGNum = 0
+
+    files.map { it.extension }.forEach {
+        gPattern.find(it)?.let {
+            val layNum = it.groupValues[1].toInt()
+            if (layNum > maxGNum) {
+                maxGNum = layNum
+            }
+        }
+    }
+    return maxGNum
 }
 
 fun fetchProjectName(files: List<File>): String {
