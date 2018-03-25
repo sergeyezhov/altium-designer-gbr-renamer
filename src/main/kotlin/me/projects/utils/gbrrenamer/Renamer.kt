@@ -13,12 +13,9 @@ fun main(args: Array<String>) {
     val dst = props["dst"] ?: ".${File.separator}gbr"
     val fName = props["fname"] ?: "filename_123"
 
-    // clean dst
-    File(dst).deleteRecursively()
-
     // rename files and copy them to dst
     toSrcDstMap(fName, srcFiles, dst).entries
-            .forEach { it.key.copyTo(it.value) }
+            .forEach { it.key.copyTo(it.value, overwrite = true) }
 }
 
 fun toSrcDstMap(fName: String, srcFiles: List<File>, dst: String): Map<File, File> {
